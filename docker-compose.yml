@@ -1,0 +1,64 @@
+version: '3.5'
+
+services:
+    rundeck:
+        image: rundeck/rundeck:SNAPSHOT
+        # コンテナ名を明示的に指定する
+        container_name: rundeck
+        hostname: rundeck-server
+        restart: always
+        # 明示的に所属するネットワークを指定する
+        networks:
+          - rundeck-link
+        #links:
+        #  - mysql
+        environment:
+            RUNDECK_DATABASE_DRIVER: com.mysql.jdbc.Driver
+            RUNDECK_DATABASE_USERNAME: rundeck
+            RUNDECK_DATABASE_PASSWORD: rundeck
+            RUNDECK_DATABASE_URL: jdbc:mysql://mysql/rundeck?autoReconnect=true&useSSL=false
+            RUNDECK_GRAILS_URL: http://XXX.XXX.XXX.XXX:4440
+        volumes:
+          - ./volumes/projects:/home/rundeck/projects/
+          - ./volumes/scripts:/home/rundeck/scripts/
+          #- ./volumes/.ssh:/home/rundeck/.ssh/
+          #- /etc/hosts:/etc/hosts
+        ports:
+          - 4440:4440
+        # ログのサイズを指定
+        logging:
+          options:
+            max-size: "200k"
+            max-file: "10"
+
+    mysql:
+        image: mysql:5.7
+        # コンテナ名を明示的に指定する
+        container_name: rundeck-mysql
+        environment:
+          - MYSQL_ROOT_PASSWORD=root
+          - MYSQL_DATABASE=rundeck
+          - MYSQL_USER=rundeck
+          - MYSQL_PASSWORD=rundeck
+        # 明示的に所属するネットワークを指定する
+        networks:
+          - rundeck-link
+        volumes:
+          - ./volumes/data:/var/lib/mysql
+
+# ネットワーク定義
+networks:
+  # defaultネットワークとして全コンテナが所属するbridgeを指定
+  default:
+    external:
+      name: bridge
+  # コンテナ間通信用のネットワークセグメント
+  rundeck-link:
+    # ネットワーク名
+    name: docker.internal
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: '172.20.100.0/24'
+
